@@ -21,3 +21,7 @@ Links of pages and articles I used as the base for this project
 [Non-perfect maze generation algorithm - Game Development Stack Exchange](https://gamedev.stackexchange.com/questions/75623/non-perfect-maze-generation-algorithm)
 
 [Buckblog: Maze Generation: Algorithm Recap](https://weblog.jamisbuck.org/2011/2/7/maze-generation-algorithm-recap)
+
+[Question - Implementing Recursive Backtracking in Unity's C#](https://forum.unity.com/threads/implementing-recursive-backtracking-in-unitys-c.1389651/)
+
+[Catlike Coding - Maze, a Unity C# Tutorial](https://catlikecoding.com/unity/tutorials/maze/)

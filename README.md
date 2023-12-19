@@ -8,6 +8,8 @@
 Links of pages and articles I used as the base for this project
 
 
+[Maze Puzzle - Old Code Challenge I participated](https://github.com/TalesMariano/MazePuzzle/tree/four-hours)
+
 [Maze generation algorithm - Wikipedia](https://en.wikipedia.org/wiki/Maze_generation_algorithm#Recursive_implementation)
 
 [Maze generator - keesiemeijer](https://keesiemeijer.github.io/maze-generator/#generate)

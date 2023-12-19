@@ -1,0 +1,3 @@
+[submodule "WebGLTemplates"]
+	path = WebGLTemplates
+	url = git@github.com:TalesMariano/WebGLTemplates.git

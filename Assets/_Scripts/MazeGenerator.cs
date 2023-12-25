@@ -4,8 +4,13 @@ using UnityEngine;
 
 public class MazeGenerator : MonoBehaviour
 {
-    [SerializeField] GameObject mazeNode;// Prefab
+    
     [SerializeField] Transform mazeObj;
+
+    [Header("Prefabs")]
+    [SerializeField] GameObject mazeNode;
+    [SerializeField] GameObject upStairsPrefab;
+    [SerializeField] GameObject downStairsPrefab;
 
     [Space]
 
@@ -74,7 +79,11 @@ public class MazeGenerator : MonoBehaviour
         {
             for (int x = 0; x < mazeDimentions.x; x++)
             {
-                nodes[x,y] = Instantiate(mazeNode, new Vector3(x, y, 0) + topLeftPosition, Quaternion.identity, mazeObj).GetComponent<VisualMazeNode>();
+                var node = Instantiate(mazeNode, new Vector3(x, y, 0) + topLeftPosition, Quaternion.identity, mazeObj);
+
+                node.name = (x + " " + y);
+
+                nodes[x,y] = node.GetComponent<VisualMazeNode>();
 
                 yield return waitTime;
             }
@@ -153,6 +162,85 @@ public class MazeGenerator : MonoBehaviour
         ColorNode(Color.red, cellPath.Peek());
 
         yield return null;
+    }
+
+
+    public void GenerateStairs()
+    {
+        GenerateStairsUp();
+        GenerateStairsDown();
+    }
+
+    void GenerateStairsUp()
+    {
+        // Loop Map
+        for (int y = mazeDimentions.y - 1; y >= 0; y--)
+        {
+            for (int x = 0; x < mazeDimentions.x; x++)
+            {
+                if(CheckPatternUpStairs(new Vector2Int(x,y), nodes))
+                {
+                    Instantiate(upStairsPrefab, nodes[x, y].transform.position, Quaternion.identity, mazeObj);
+                }
+            }
+        }
+    }
+
+    void GenerateStairsDown()
+    {
+        // Loop Map
+        for (int y = mazeDimentions.y - 1; y >= 0; y--)
+        {
+            for (int x = 0; x < mazeDimentions.x; x++)
+            {
+                if (CheckPatternDownStairs(new Vector2Int(x, y), nodes))
+                {
+                    Instantiate(downStairsPrefab, nodes[x, y].transform.position, Quaternion.identity, mazeObj);
+                }
+            }
+        }
+    }
+
+    bool CheckPatternUpStairs(Vector2Int position, VisualMazeNode[,] nodes)
+    {
+        /* Pattern is
+         *     x+1 y+1 left true down false
+         *  xy up True Down False
+         */
+
+        if (position.x < nodes.GetLength(0)-1 && position.y >= 0)   // xy is valid
+        {
+            if (position.x >= 0 && position.y < nodes.GetLength(1) - 1)   // x+1 y+1 is valid
+            {
+
+                return (nodes[position.x, position.y].paths[0] && !nodes[position.x, position.y].paths[2])          // up True Down False
+                    && (nodes[position.x + 1, position.y + 1].paths[3] && !nodes[position.x + 1, position.y + 1].paths[2]); // left true down false
+            }
+        }
+        return false;
+    }
+
+    bool CheckPatternDownStairs(Vector2Int position, VisualMazeNode[,] nodes)
+    {
+        /* Pattern is
+         *     x-1 y+1 left true down false
+         *  xy up True Down False
+         */
+
+        if (position.x < nodes.GetLength(0)  && position.y >= 0)   // xy is valid
+        {
+            if (position.x > 0 && position.y < nodes.GetLength(1)-1)   // x-1 y+1 is valid
+            {
+                Debug.Log(string.Format("{0} {1}", position.x, position.y));
+                Debug.Log(string.Format("{0} {1}", position.x + 1, position.y - 1));
+                Debug.Log("---");
+
+
+                return (nodes[position.x, position.y].paths[0] && !nodes[position.x, position.y].paths[2])          // up True Down False
+                    && (nodes[position.x - 1, position.y + 1].paths[1] && !nodes[position.x - 1, position.y + 1].paths[2]); // right true down false
+            }
+        }
+        return false;
     }
 
     void ColorNode(Color color, Vector2Int position)

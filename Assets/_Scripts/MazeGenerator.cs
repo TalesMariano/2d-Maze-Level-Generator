@@ -293,12 +293,19 @@ public class MazeGenerator : MonoBehaviour
 
     public void GenerateStairs()
     {
-        GenerateStairsUp();
-        GenerateStairsDown();
+        StartCoroutine(SequenceGenerateStairs());
     }
 
-    void GenerateStairsUp()
+    IEnumerator SequenceGenerateStairs()
     {
+        yield return StartCoroutine(GenerateStairsUp());
+        yield return StartCoroutine(GenerateStairsDown());
+    }
+
+    IEnumerator GenerateStairsUp()
+    {
+        var waitTime = new WaitForSeconds(0.08f);
+
         // Loop Map
         for (int y = mazeDimentions.y - 1; y >= 0; y--)
         {
@@ -307,13 +314,15 @@ public class MazeGenerator : MonoBehaviour
                 if(CheckPatternUpStairs(new Vector2Int(x,y), mapNodes))
                 {
                     Instantiate(upStairsPrefab, visualNodes[ Position2DToArrayId( x, y , mazeDimentions.x)].transform.position, Quaternion.identity, mazeObj);
+                    yield return waitTime;
                 }
             }
         }
     }
 
-    void GenerateStairsDown()
+    IEnumerator GenerateStairsDown()
     {
+        var waitTime = new WaitForSeconds(0.08f);
         // Loop Map
         for (int y = mazeDimentions.y - 1; y >= 0; y--)
         {
@@ -322,6 +331,7 @@ public class MazeGenerator : MonoBehaviour
                 if (CheckPatternDownStairs(new Vector2Int(x, y), mapNodes))
                 {
                     Instantiate(downStairsPrefab, visualNodes[Position2DToArrayId(x, y, mazeDimentions.x)].transform.position, Quaternion.identity, mazeObj);
+                    yield return waitTime;
                 }
             }
         }

@@ -20,9 +20,15 @@ public class MazeGenerator : MonoBehaviour
 
     [Space]
 
-    public VisualMazeNode[,] nodes;
+    public MazeNode[] mapNodes;
+
+    //public VisualMazeNode[,] nodes;
+    public VisualMazeNode[] visualNodes;
 
     public bool lastVertical = true;
+
+    Vector2Int[] visitedTest;
+
 
     public void SetX(string x)
     {
@@ -44,7 +50,8 @@ public class MazeGenerator : MonoBehaviour
         }
 
         // Prepare Things
-        nodes = new VisualMazeNode[mazeDimentions.x, mazeDimentions.y];
+        mapNodes = new MazeNode[mazeDimentions.x * mazeDimentions.y];
+        visualNodes = new VisualMazeNode[mazeDimentions.x * mazeDimentions.y];
     }
 
 
@@ -53,7 +60,7 @@ public class MazeGenerator : MonoBehaviour
     {
         ClearMaze();
 
-        StartCoroutine(DelayedSpawnNodes());
+        StartCoroutine(DelayedSpawnNodes(SetupMaze()));
         /*
         Vector3 topLeftPosition = new Vector3(-mazeDimentions.x / 2, -mazeDimentions.y / 2, 0);
 
@@ -66,7 +73,101 @@ public class MazeGenerator : MonoBehaviour
         }*/
     }
 
-    IEnumerator DelayedSpawnNodes()
+
+    [ContextMenu("Generate Maze")]
+    void GenerateMaze()
+    {
+        // Start Array
+        mapNodes = new MazeNode[mazeDimentions.x * mazeDimentions.y];
+
+        // SSet nodes names
+        for (int i = 0; i < mapNodes.Length; i++)
+        {
+            string name = string.Format("{0} x {1}", i % mazeDimentions.x, i / mazeDimentions.x);
+
+            mapNodes[i] = new MazeNode(name);
+        }
+
+        
+
+        int totalCells = mazeDimentions.x * mazeDimentions.y;
+        
+        Stack<Vector2Int> cellPath = new Stack<Vector2Int>();
+        Stack<Vector2Int> visited = new Stack<Vector2Int>();
+
+        // Start node
+        Vector2Int startCell = startPosition;//new Vector2Int(0, mazeDimentions.y - 1);
+        mapNodes[Position2DToArrayId(startCell.x, startCell.y, mazeDimentions.x)].nodeType = MazeNode.NodeType.StartingPoint;
+
+        cellPath.Push(startCell);
+        visited.Push(startCell);
+
+        //Bool for dead ends
+        bool lastPop = false;
+
+
+        while (visited.Count < totalCells)
+        {
+
+            Vector2Int nextDir = NextDirectionCellBiasHorisontal(visited, mazeDimentions, cellPath.Peek().x, cellPath.Peek().y);
+
+
+            lastVertical = nextDir == Vector2Int.up || nextDir == Vector2Int.down;
+
+            if (nextDir != Vector2.zero)
+            {
+                //Vector2 currentCell = cellPath.Peek();
+
+                // Get node id
+                int arrayPos = Position2DToArrayId(cellPath.Peek().x, cellPath.Peek().y, mazeDimentions.x);
+
+                // set path viable on Cell
+                mapNodes[arrayPos].SetPathOpen(nextDir);
+
+                // next cell
+                cellPath.Push(cellPath.Peek() + nextDir);
+
+                arrayPos = Position2DToArrayId(cellPath.Peek().x, cellPath.Peek().y, mazeDimentions.x);
+
+                // set path viable on Cell
+                mapNodes[arrayPos].SetPathOpen(nextDir * -1);
+
+                //add cell to visited
+                visited.Push(cellPath.Peek());
+
+                lastPop = false;
+            }
+            else
+            {
+
+                if (!lastPop)
+                {
+                    int id = Position2DToArrayId(cellPath.Peek().x, cellPath.Peek().y, mazeDimentions.x);
+                    mapNodes[id].nodeType = MazeNode.NodeType.DeadEnd;
+                }
+                cellPath.Pop();
+                lastPop = true;
+            }
+        }
+
+        //PAint last point
+        mapNodes[Position2DToArrayId(cellPath.Peek().x, cellPath.Peek().y, mazeDimentions.x)].nodeType = MazeNode.NodeType.DeadEnd;
+
+        visitedTest =   visited.ToArray();
+        System.Array.Reverse(visitedTest, 0, visitedTest.Length);
+    }
+
+
+    [ContextMenu("Visual Biuld")]
+    public void VisualBuild()
+    {
+        ClearMaze();
+        GenerateMaze();
+        StartCoroutine(DelayedSpawnNodes(SetupMazeVisual()));
+    }
+
+
+    IEnumerator DelayedSpawnNodes(IEnumerator OnFinished)
     {
         var waitTime = new WaitForSeconds(0.01f);
 
@@ -83,14 +184,34 @@ public class MazeGenerator : MonoBehaviour
 
                 node.name = (x + " " + y);
 
-                nodes[x,y] = node.GetComponent<VisualMazeNode>();
+                visualNodes[Position2DToArrayId(x,y,mazeDimentions.x)] = node.GetComponent<VisualMazeNode>();
 
                 yield return waitTime;
             }
         }
 
-        StartCoroutine(SetupMaze());
+        StartCoroutine(OnFinished); //SetupMaze()
     }
+
+    IEnumerator SetupMazeVisual()
+    {
+        var waitTime = new WaitForSeconds(0.08f);
+
+        for (int i = 0; i < visitedTest.Length; i++)
+        {
+            Vector2Int item = visitedTest[i];
+
+            int id = Position2DToArrayId(visitedTest[i].x, visitedTest[i].y, mazeDimentions.x);
+
+            SetVisualNodeOpen(mapNodes[id], visualNodes[id]);
+
+            //visualNodes[id].ColorCell(Color.blue);
+            VisualColorNode(mapNodes[id], visualNodes[id]);
+
+            yield return waitTime;
+        }
+    }
+
 
     IEnumerator SetupMaze()
     {
@@ -124,15 +245,20 @@ public class MazeGenerator : MonoBehaviour
             {
                 //Vector2 currentCell = cellPath.Peek();
 
+                // Get node id
+                int arrayPos = Position2DToArrayId(cellPath.Peek().x, cellPath.Peek().y,mazeDimentions.x);
+
                 // set path viable on Cell
-                nodes[cellPath.Peek().x, cellPath.Peek().y].SetPathOpen(nextDir);
+                visualNodes[arrayPos].SetPathOpen(nextDir);
                 
 
                 // next cell
                 cellPath.Push(cellPath.Peek() + nextDir);
 
+                arrayPos = Position2DToArrayId(cellPath.Peek().x, cellPath.Peek().y, mazeDimentions.x);
+
                 // set path viable on Cell
-                nodes[cellPath.Peek().x, cellPath.Peek().y].SetPathOpen(nextDir * -1);
+                visualNodes[arrayPos].SetPathOpen(nextDir * -1);
 
                 ColorNode(Color.blue, cellPath.Peek());
 
@@ -178,9 +304,9 @@ public class MazeGenerator : MonoBehaviour
         {
             for (int x = 0; x < mazeDimentions.x; x++)
             {
-                if(CheckPatternUpStairs(new Vector2Int(x,y), nodes))
+                if(CheckPatternUpStairs(new Vector2Int(x,y), mapNodes))
                 {
-                    Instantiate(upStairsPrefab, nodes[x, y].transform.position, Quaternion.identity, mazeObj);
+                    Instantiate(upStairsPrefab, visualNodes[ Position2DToArrayId( x, y , mazeDimentions.x)].transform.position, Quaternion.identity, mazeObj);
                 }
             }
         }
@@ -193,60 +319,62 @@ public class MazeGenerator : MonoBehaviour
         {
             for (int x = 0; x < mazeDimentions.x; x++)
             {
-                if (CheckPatternDownStairs(new Vector2Int(x, y), nodes))
+                if (CheckPatternDownStairs(new Vector2Int(x, y), mapNodes))
                 {
-                    Instantiate(downStairsPrefab, nodes[x, y].transform.position, Quaternion.identity, mazeObj);
+                    Instantiate(downStairsPrefab, visualNodes[Position2DToArrayId(x, y, mazeDimentions.x)].transform.position, Quaternion.identity, mazeObj);
                 }
             }
         }
     }
 
-    bool CheckPatternUpStairs(Vector2Int position, VisualMazeNode[,] nodes)
+    bool CheckPatternUpStairs(Vector2Int position, MazeNode[] nodes)
     {
         /* Pattern is
          *     x+1 y+1 left true down false
          *  xy up True Down False
          */
 
-        if (position.x < nodes.GetLength(0)-1 && position.y >= 0)   // xy is valid
+        if (position.x < mazeDimentions.x - 1 && position.y >= 0)   // xy is valid
         {
-            if (position.x >= 0 && position.y < nodes.GetLength(1) - 1)   // x+1 y+1 is valid
+            if (position.x >= 0 && position.y < mazeDimentions.y - 1)   // x+1 y+1 is valid
             {
 
-                return (nodes[position.x, position.y].paths[0] && !nodes[position.x, position.y].paths[2])          // up True Down False
-                    && (nodes[position.x + 1, position.y + 1].paths[3] && !nodes[position.x + 1, position.y + 1].paths[2]); // left true down false
+                int pos1 = Position2DToArrayId(position.x, position.y, mazeDimentions.x);
+                int pos2 = Position2DToArrayId(position.x + 1, position.y + 1, mazeDimentions.x);
+
+                return (nodes[pos1].up && !nodes[pos1].down)          // up True Down False
+                    && (nodes[pos2].left && !nodes[pos2].down); // left true down false
             }
         }
         return false;
     }
 
-    bool CheckPatternDownStairs(Vector2Int position, VisualMazeNode[,] nodes)
+    bool CheckPatternDownStairs(Vector2Int position, MazeNode[] nodes)
     {
         /* Pattern is
          *     x-1 y+1 left true down false
          *  xy up True Down False
          */
 
-        if (position.x < nodes.GetLength(0)  && position.y >= 0)   // xy is valid
+        if (position.x < mazeDimentions.x && position.y >= 0)   // xy is valid
         {
-            if (position.x > 0 && position.y < nodes.GetLength(1)-1)   // x-1 y+1 is valid
+            if (position.x > 0 && position.y < mazeDimentions.y - 1)   // x-1 y+1 is valid
             {
-                Debug.Log(string.Format("{0} {1}", position.x, position.y));
-                Debug.Log(string.Format("{0} {1}", position.x + 1, position.y - 1));
-                Debug.Log("---");
+                //Debug.Log(string.Format("{0} {1}", position.x, position.y));
+                //Debug.Log(string.Format("{0} {1}", position.x + 1, position.y - 1));
+                //Debug.Log("---");
 
+                int pos1 = Position2DToArrayId(position.x, position.y, mazeDimentions.x);
+                int pos2 = Position2DToArrayId(position.x - 1, position.y + 1, mazeDimentions.x);
 
-                return (nodes[position.x, position.y].paths[0] && !nodes[position.x, position.y].paths[2])          // up True Down False
-                    && (nodes[position.x - 1, position.y + 1].paths[1] && !nodes[position.x - 1, position.y + 1].paths[2]); // right true down false
+                return (nodes[pos1].up && !nodes[pos1].down)          // up True Down False
+                    && (nodes[pos2].right && !nodes[pos2].down); // right true down false
             }
         }
         return false;
     }
 
-    void ColorNode(Color color, Vector2Int position)
-    {
-        nodes[position.x, position.y].ColorCell(color);
-    }
+
 
     // Check and return direction 
     Vector2Int NextDirectionCell(Stack<Vector2Int> visited, Vector2Int mazeDimentions, int x, int y)
@@ -281,7 +409,7 @@ public class MazeGenerator : MonoBehaviour
 
         if (possibleDirections.Count > 0)
         {
-            int random = Random.Range(0, possibleDirections.Count);
+            int random = UnityEngine.Random.Range(0, possibleDirections.Count);
             return possibleDirections[random];  // return random direction avaliable
         }
         else
@@ -325,12 +453,44 @@ public class MazeGenerator : MonoBehaviour
 
         if (possibleDirections.Count > 0)
         {
-            int random = Random.Range(0, possibleDirections.Count);
+            int random = UnityEngine.Random.Range(0, possibleDirections.Count);
             return possibleDirections[random];  // return random direction avaliable
         }
         else
             return Vector2Int.zero;    // No direction avaliable
     }
+
+       // Utils
+    int Position2DToArrayId(int x, int y, int xDimention)
+    {
+        return y * xDimention + x;
+    }
+
+    void SetVisualNodeOpen(MazeNode node, VisualMazeNode visual)
+    {
+        if (node.up) visual.SetPathOpen(Vector2Int.up);
+        if (node.down) visual.SetPathOpen(Vector2Int.down);
+        if (node.left) visual.SetPathOpen(Vector2Int.left);
+        if (node.right) visual.SetPathOpen(Vector2Int.right);
+
+    }
+
+    void ColorNode(Color color, Vector2Int position)
+    {
+        visualNodes[Position2DToArrayId(position.x, position.y, mazeDimentions.x)].ColorCell(color);
+    }
+
+    void VisualColorNode(MazeNode node, VisualMazeNode visual)
+    {
+        Color targetColor = Color.blue;
+
+        if (node.nodeType == MazeNode.NodeType.DeadEnd) targetColor = Color.red;
+
+        if (node.nodeType == MazeNode.NodeType.StartingPoint) targetColor = Color.green;
+
+        visual.ColorCell(targetColor);
+    }
+
 }
 
 
@@ -339,6 +499,49 @@ public class MazeGenerator : MonoBehaviour
 [System.Serializable]
 public class MazeNode
 {
+    [HideInInspector] public string name ="tt";
+
+    public bool up;
+    public bool right;
+    public bool down;
+    public bool left;
+
+    [Space]
+
     public bool visited = false;
-    public Vector4 vector4;
+    public NodeType nodeType;
+
+
+    public MazeNode(string name)
+    {
+        this.name = name;
+    }
+
+    public void SetPathOpen(Vector2Int dir)
+    {
+        switch (dir)
+        {
+            case Vector2Int v when v.Equals(Vector2Int.up):
+                up = true;
+                break;
+            case Vector2Int v when v.Equals(Vector2Int.down):
+                down = true;
+                break;
+            case Vector2Int v when v.Equals(Vector2Int.left):
+                left = true;
+                break;
+            case Vector2Int v when v.Equals(Vector2Int.right):
+                right = true;
+                break;
+        }
+    }
+
+    public enum NodeType
+    {
+        Basic,
+        StartingPoint,
+        DeadEnd,
+        StairsUp,
+        StairsDown
+    }
 }
